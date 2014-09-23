@@ -11,19 +11,19 @@ from elasticsearch import Elasticsearch
 url = "licenses.json"
 eshost = "192.168.2.73"
 esindex = 'agr-g0v'
-estype = 'license4'
+estype = 'license'
 
 mapping = {
     estype : {
         'properties': {
-            u'許可證號': {'type': 'string', 'index': 'not_analyzed'},
-            u'中文名稱': {'type': 'string', 'index': 'not_analyzed'},
-            u'英文名稱': {'type': 'string', 'index': 'not_analyzed'},
-            u'廠商名稱': {'type': 'string', 'index': 'not_analyzed'},
-            u'國外原製造廠商': {'type': 'string', 'index': 'not_analyzed'},
-            u'有效期限': {'type': 'date'},
-            u'廠牌名稱': {'type': 'string', 'index': 'not_analyzed'},
-            u'農藥代號': {'type': 'string', 'index': 'not_analyzed'}
+            'id': {'type': 'string', 'index': 'not_analyzed'},
+            'name_tw': {'type': 'string', 'index': 'not_analyzed'},
+            'name_en': {'type': 'string', 'index': 'not_analyzed'},
+            'vendor': {'type': 'string', 'index': 'not_analyzed'},
+            'overseas_factory': {'type': 'string', 'index': 'not_analyzed'},
+            'expire': {'type': 'date'},
+            'brand': {'type': 'string', 'index': 'not_analyzed'},
+            'code': {'type': 'string', 'index': 'not_analyzed'}
         }
     }
 }
@@ -32,14 +32,22 @@ mapping = {
 def convert():
     es = Elasticsearch([{'host': eshost, 'port': 9200}])
     es.indices.create(index=esindex, ignore=400)
-    es.indices.put_mapping(index=esindex,doc_type=estype, ignore_conflicts=True, body=mapping)
+    es.indices.delete_mapping(index=esindex,doc_type=estype)
+    es.indices.put_mapping(index=esindex,doc_type=estype, body=mapping)
     jarr = json.load(open(url,'r'),encoding="utf-8")
-    # print(json.dumps(jarr[0], indent=4,ensure_ascii=False,encoding='utf8'))
-    #print(res)
     for x in jarr:
         try:
-            x[u'有效期限'] = yearfix(x[u'有效期限'])
-            res = es.index(index=esindex, doc_type=estype, id=x[u'許可證號'],  body=x)
+            y = {}
+            y['id'] = x[u'許可證號']
+            y['name_tw'] = x[u'中文名稱']
+            y['name_en'] = x[u'英文名稱']
+            y['vendor'] = x[u'廠商名稱']
+            y['overseas_factory'] = x[u'國外原製造廠商']
+            y['code'] = x[u'農藥代號']
+            y['brand'] = x[u'廠牌名稱']
+            y['expire'] = yearfix(x[u'有效期限'])
+            y['timestamp'] = datetime.now()
+            res = es.index(index=esindex, doc_type=estype, id=y['id'],  body=y)
         except ValueError:
             print("Oops! ValueError:")
             print(json.dumps(x, indent=4,ensure_ascii=False,encoding='utf8'))
